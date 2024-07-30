@@ -2,7 +2,7 @@
     <img src="frontend/public/assets/images/fileshare-logo-dark.svg" alt="Fileshare logo" width="40%" style="padding-bottom:65px; align: center"/>
 </p>
 
-Fileshare is a cloud storage application like Google Drive or Dropbox. Users can upload their files to a cloud server on one machine and then download them on another. 
+ScaleSafe is a cloud storage application like Google Drive or Dropbox. Users can upload their files to a cloud server on one machine and then download them on another. 
 
 ---
 
@@ -42,7 +42,7 @@ Application traffic needs to be distributed across multiple servers working in t
 
 In this scenerio, there is only one application server in the backend that accepts requests from the frontend so all traffic is being routed to that server. If at some point this changes, `nginx.conf` can be modified to direct traffic to the new server by making a small tweak to the upstream block. The load balancing algorithm can be changed as well to suit the needs of the application as it evolves.
 ```
-upstream fileshare_backend {
+upstream Scalesafe_backend {
     # Weighted Round Robin
     server backend1:8000 weight=3;
     server backend2:8100;
@@ -81,7 +81,7 @@ User data and file metadata is cached by Redis to prevent multiple database quer
 To build and run the application:
 - Clone the repository on the main branch.
 ```
-git clone git@github.com:reyncode/fileshare.git
+git clone git@github.com:reyncode/Scalesafe.git
 ```
 - Navigate to the project root use docker compose to build the images and start the containers:
 ```
