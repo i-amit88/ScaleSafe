@@ -6,7 +6,7 @@ export const s3: S3Client = new S3Client({
   endpoint: config.REACT_APP_STORAGE_URL,
   forcePathStyle: true,
   credentials: {
-    accessKeyId: "AKIA6FXCGTUFKYJCJQDT",
-    secretAccessKey: "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",
+    accessKeyId: "test",
+    secretAccessKey: "test",
   },
 });
