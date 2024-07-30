@@ -1,0 +1,153 @@
+name: fileshare
+
+services:
+  database:
+    image: postgres:alpine
+    restart: no
+    volumes:
+      - app-db-data:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432"
+    env_file:
+      - .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+    networks:
+      - fileshare-public
+
+  storage:
+    image: localstack/localstack:stable
+    restart: no
+    volumes:
+      - app-storage-data:/var/lib/localstack
+      - ./localstack/cors-config.json:/config/cors-config.json
+      - ./localstack/init-storage.sh:/etc/localstack/init/ready.d/init-storage.sh
+    ports: 
+      - "4566:4566"
+    env_file:
+      - .env
+    environment:
+      - DEBUG=${S3_DEBUG_MODE?Variable not set}
+      - SERVICES=s3,cloudwatch,logs
+      - FILE_BUCKET_NAME=${S3_FILE_BUCKET_NAME?Variable not set}
+      # Persistence only available with a pro image
+    command:
+      - /bin/bash
+      - -c
+      - |
+        chmod +x ./localstack/init-storage.sh && /etc/localstack/init/ready.d/init-storage.sh
+    networks:
+      - fileshare-public
+
+  cache:
+    image: redis:alpine
+    restart: no
+    volumes:
+      - cache:/data
+    ports:
+      - "6379"
+    env_file:
+      - .env
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}"
+    networks:
+      - fileshare-public
+
+  redisinsight:
+    image: redislabs/redisinsight
+    ports:
+      - "5540:5540"
+    networks:
+      - fileshare-public
+
+  dev-frontend:
+    profiles: ["dev"]
+    image: node:latest
+    working_dir: /app
+    restart: no
+    networks:
+      - fileshare-public
+    volumes:
+      - ./frontend:/app
+    environment:
+      - WATCHPACK_POLLING=true
+      - REACT_APP_BACKEND_URL=http://${DOMAIN}:8080
+      - REACT_APP_STORAGE_URL=http://${DOMAIN}:4566
+      - REACT_APP_FILE_BUCKET_NAME=${S3_FILE_BUCKET_NAME}
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    command: npm start
+
+  frontend:
+    restart: no
+    networks:
+      - fileshare-public
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_BACKEND_URL=http://${DOMAIN}:8080
+        - REACT_APP_STORAGE_URL=http://${DOMAIN}:4566
+        - REACT_APP_FILE_BUCKET_NAME=${S3_FILE_BUCKET_NAME}
+        - NODE_ENV=production
+    ports:
+      - "80:80"
+    depends_on:
+      - balancer
+      - storage
+
+  balancer:
+    image: nginx:latest  
+    restart: no
+    networks:
+      - fileshare-public
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+
+  backend:
+    restart: on-failure:3
+    depends_on:
+      - database
+      - cache
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - USERS_OPEN_REGISTRATION=${USERS_OPEN_REGISTRATION}
+      - POSTGRES_SERVER=database
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not sat}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - REDIS_SERVER=cache
+      - REDIS_PASSWORD=${REDIS_PASSWORD?Variable not set}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB}
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    networks:
+      - fileshare-public
+
+volumes:
+  app-db-data:
+  app-storage-data:
+  cache:
+    driver: local
+
+networks:
+  fileshare-public:
+    driver: bridge
