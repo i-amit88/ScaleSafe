@@ -24,20 +24,6 @@ awslocal logs create-log-group --log-group-name /aws/s3/scalesafe-bucket-104
 # Create CloudWatch log stream
 awslocal logs create-log-stream --log-group-name /aws/s3/scalesafe-bucket-104 --log-stream-name s3-log-stream
 
-# Enable logging for the S3 bucket
-# awslocal s3api put-bucket-logging --bucket scalesafe-bucket-104 --bucket-logging-status '{
-#     "LoggingEnabled": {
-#         "TargetBucket": "'"scalesafe-bucket-104"'",
-#         "TargetPrefix": "logs/",
-#         "TargetGrants": [
-#             {
-#                 "Grantee": {
-#                     "Type": "Group",
-#                     "URI": "http://acs.amazonaws.com/groups/global/AllUsers"
-#                 },
-#                 "Permission": "FULL_CONTROL"
-#             }
-#         ]
-#     }
-# }'
 awslocal s3api put-bucket-logging --bucket scalesafe-bucket-104 --bucket-logging-status '{"LoggingEnabled":{"TargetBucket":"scalesafe-bucket-104","TargetPrefix":"logs/","TargetGrants":[{"Grantee":{"Type":"Group","URI":"http://acs.amazonaws.com/groups/global/AllUsers"},"Permission":"FULL_CONTROL"}]}}'
+
+echo "test log" | awslocal s3 cp - s3://scalesafe-bucket-104/logs/test-log-file.txt
